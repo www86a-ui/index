@@ -6,7 +6,6 @@
 <title>LUXE — Virtual Makeup Studio</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Montserrat:wght@200;300;400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/deepar/js/deepar.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@deepar/beauty/dist/beauty.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -314,10 +313,12 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; h
 </div>
 
 <script>
-const LICENSE_KEY = 'cb0f4c3a0ab0831e2604f98ed4652157486f181630b1467eba42485b5a0b723d09c215c034a2b392';
+const LICENSE_KEY = '2fbe422af87d602903e81784016cf1bb4bfababafedcbcd7c278e4466100287212594272f252cf85';
+const BEAUTY_CDN  = 'https://cdn.jsdelivr.net/npm/@deepar/beauty/dist/';
 
 let deepAR = null;
 let beauty = null;
+let BeautyLib = null;
 
 // Current state
 const ST = {
@@ -327,6 +328,26 @@ const ST = {
   contour: { r:0, g:0, b:0, active: false, amount: 40 },
   skin:    50
 };
+
+// Load Beauty library dynamically
+async function loadBeautyLib() {
+  if (BeautyLib) return BeautyLib;
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = BEAUTY_CDN + 'beauty.js';
+    s.onload = () => {
+      // Beauty is exposed as global
+      if (typeof Beauty !== 'undefined') {
+        BeautyLib = Beauty;
+        resolve(BeautyLib);
+      } else {
+        reject(new Error('Beauty library not found after load'));
+      }
+    };
+    s.onerror = () => reject(new Error('Failed to load Beauty SDK'));
+    document.head.appendChild(s);
+  });
+}
 
 /* ── INIT ── */
 document.getElementById('btnStart').addEventListener('click', async () => {
@@ -338,20 +359,20 @@ document.getElementById('btnStart').addEventListener('click', async () => {
   err.style.display = 'none';
 
   try {
+    // Load Beauty SDK first
+    await loadBeautyLib();
+
     // Init DeepAR
     deepAR = await deepar.initialize({
       licenseKey: LICENSE_KEY,
       previewElement: document.getElementById('deepar-div'),
       additionalOptions: {
-        hint: 'enableFaceTrackingCnn'  // more accurate face tracking
+        hint: 'enableFaceTrackingCnn'
       }
     });
 
     // Init Beauty plugin
-    beauty = await Beauty.initializeBeauty(
-      deepAR,
-      'https://cdn.jsdelivr.net/npm/@deepar/beauty/dist/'
-    );
+    beauty = await BeautyLib.initializeBeauty(deepAR, BEAUTY_CDN);
 
     // Default skin smoothing
     beauty.skinSmoothing.set(ST.skin);
