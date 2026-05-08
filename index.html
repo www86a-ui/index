@@ -5,24 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>LUXE — Virtual Makeup Studio</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Montserrat:wght@200;300;400&display=swap" rel="stylesheet">
-<script type="module">
-import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
-window._initFaceLandmarker = async function() {
-  const vision = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
-  );
-  window._faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-    baseOptions: {
-      modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-      delegate: "CPU"
-    },
-    outputFaceBlendshapes: false,
-    runningMode: "VIDEO",
-    numFaces: 1
-  });
-  return true;
-};
-</script>
+<script src="https://cdn.jsdelivr.net/npm/deepar/js/deepar.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@deepar/beauty/dist/beauty.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -34,35 +18,45 @@ body {
   font-family: 'Montserrat', sans-serif; font-weight: 300;
   min-height: 100vh; overflow-x: hidden;
 }
+
 header {
   padding: .9rem 1.5rem;
   border-bottom: 1px solid rgba(201,169,110,.18);
   display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
 }
 .logo { font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; letter-spacing: .4em; color: var(--gold); }
 .logo em { font-style: italic; color: var(--cream); }
 .sub { font-size: .5rem; letter-spacing: .22em; text-transform: uppercase; color: rgba(245,240,232,.3); margin-top: 2px; }
+
 .studio { display: flex; flex-direction: column; }
 @media (min-width: 700px) { .studio { flex-direction: row; height: calc(100vh - 58px); } }
+
+/* DeepAR preview */
 .cam-wrap {
   position: relative; background: var(--bg);
   display: flex; align-items: center; justify-content: center;
-  overflow: hidden; flex: 1; min-height: 60vw;
+  overflow: hidden; flex: 1; min-height: 65vw;
 }
-#vid { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
-#cv  { position: absolute; top:0; left:0; width:100%; height:100%; transform: scaleX(-1); pointer-events: none; }
-.cor { position: absolute; width:22px; height:22px; border:1px solid rgba(201,169,110,.45); }
+
+#deepar-div {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+
+#deepar-div canvas {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain;
+}
+
+/* corners */
+.cor { position: absolute; width:22px; height:22px; border:1px solid rgba(201,169,110,.45); pointer-events:none; z-index:2; }
 .cor.tl { top:10px; left:10px; border-right:none; border-bottom:none; }
 .cor.tr { top:10px; right:10px; border-left:none; border-bottom:none; }
 .cor.bl { bottom:10px; left:10px; border-right:none; border-top:none; }
 .cor.br { bottom:10px; right:10px; border-left:none; border-top:none; }
-#statusBar {
-  position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
-  background:rgba(13,11,8,.8); border:1px solid rgba(201,169,110,.3);
-  padding:.28rem .9rem; font-size:.52rem; letter-spacing:.18em;
-  text-transform:uppercase; color:var(--gold); white-space:nowrap; z-index:5; display:none;
-}
-#statusBar.on { display:block; }
+
+/* overlay */
 .ov {
   position:absolute; inset:0; z-index:10;
   background:rgba(13,11,8,.96);
@@ -87,13 +81,16 @@ header {
   letter-spacing:.28em; text-transform:uppercase; cursor:pointer; transition:all .3s;
 }
 .btn-start:hover,.btn-start:active { background:var(--gold); color:var(--dark); }
+
 #loadWrap { display:none; flex-direction:column; align-items:center; gap:.7rem; }
 #loadWrap.on { display:flex; }
 .load-txt { font-size:.58rem; letter-spacing:.2em; text-transform:uppercase; color:var(--gold); }
 .load-track { width:180px; height:1px; background:rgba(201,169,110,.2); overflow:hidden; position:relative; }
 .load-fill { position:absolute; top:0; left:-100%; width:60%; height:100%; background:var(--gold); animation:la 1.4s ease-in-out infinite; }
 @keyframes la { 0%{left:-60%} 100%{left:120%} }
-#errMsg { font-size:.62rem; color:#e08060; line-height:1.8; max-width:280px; display:none; margin-top:.5rem; }
+
+#errMsg { font-size:.62rem; color:#e08060; line-height:1.8; max-width:300px; display:none; margin-top:.5rem; }
+
 #flash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:20; transition:opacity .06s; }
 #flash.pop { opacity:.85; }
 
@@ -101,14 +98,17 @@ header {
 .sidebar {
   background:var(--panel); border-top:1px solid rgba(201,169,110,.15);
   padding:1.2rem 1.1rem; overflow-y:auto;
-  display:flex; flex-direction:column; gap:1.2rem;
+  display:flex; flex-direction:column; gap:1.4rem;
 }
 @media (min-width:700px) { .sidebar { width:300px; border-top:none; border-left:1px solid rgba(201,169,110,.15); } }
 .sidebar::-webkit-scrollbar { width:2px; }
 .sidebar::-webkit-scrollbar-thumb { background:rgba(201,169,110,.2); }
+
 .sec { font-size:.58rem; letter-spacing:.24em; text-transform:uppercase; color:var(--gold); border-bottom:1px solid rgba(201,169,110,.18); padding-bottom:.45rem; }
-.lbl { font-size:.52rem; letter-spacing:.14em; text-transform:uppercase; color:rgba(245,240,232,.38); margin-bottom:.45rem; margin-top:.2rem; }
-.sws { display:flex; flex-wrap:wrap; gap:.42rem; margin-bottom:.65rem; }
+.lbl { font-size:.52rem; letter-spacing:.14em; text-transform:uppercase; color:rgba(245,240,232,.38); margin-bottom:.5rem; margin-top:.2rem; }
+
+/* swatches */
+.sws { display:flex; flex-wrap:wrap; gap:.42rem; margin-bottom:.6rem; }
 .sw {
   width:28px; height:28px; border-radius:50%;
   cursor:pointer; border:2px solid transparent;
@@ -121,6 +121,8 @@ header {
   display:flex; align-items:center; justify-content:center;
   font-size:.62rem; color:rgba(245,240,232,.3); line-height:1;
 }
+
+/* finish tabs */
 .tabs { display:flex; gap:.35rem; margin-bottom:.3rem; }
 .tab {
   flex:1; padding:.38rem .1rem; background:transparent;
@@ -129,10 +131,28 @@ header {
   text-transform:uppercase; cursor:pointer; transition:all .2s;
 }
 .tab.on { border-color:var(--gold); color:var(--gold); background:rgba(201,169,110,.07); }
+
+/* slider */
 .sl-row { display:flex; flex-direction:column; gap:.45rem; }
 .sl-lbls { display:flex; justify-content:space-between; font-size:.52rem; letter-spacing:.1em; color:rgba(245,240,232,.32); }
 input[type=range] { -webkit-appearance:none; width:100%; height:1px; background:rgba(201,169,110,.28); outline:none; }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; height:13px; border-radius:50%; background:var(--gold); cursor:pointer; }
+
+/* toggle row */
+.toggle-row { display:flex; align-items:center; justify-content:space-between; }
+.toggle-lbl { font-size:.52rem; letter-spacing:.14em; text-transform:uppercase; color:rgba(245,240,232,.38); }
+.toggle {
+  width:36px; height:20px; background:rgba(201,169,110,.2); border-radius:10px;
+  cursor:pointer; position:relative; transition:background .3s;
+}
+.toggle.on { background:var(--gold); }
+.toggle::after {
+  content:''; position:absolute; width:14px; height:14px; border-radius:50%;
+  background:var(--cream); top:3px; left:3px; transition:left .3s;
+}
+.toggle.on::after { left:19px; }
+
+/* buttons */
 .btn-g {
   width:100%; background:var(--gold); border:none; color:var(--dark);
   padding:.85rem; font-family:'Montserrat',sans-serif; font-size:.58rem;
@@ -145,6 +165,8 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; h
   font-size:.52rem; letter-spacing:.2em; text-transform:uppercase; cursor:pointer; transition:all .2s;
 }
 .btn-ghost:hover { border-color:#e08060; color:#e08060; }
+
+/* CTA */
 .cta {
   padding:1rem 1.5rem; border-top:1px solid rgba(201,169,110,.13);
   background:linear-gradient(135deg,rgba(201,169,110,.05),rgba(139,58,90,.05));
@@ -174,81 +196,113 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; h
 </header>
 
 <div class="studio">
+  <!-- DeepAR camera area -->
   <div class="cam-wrap">
-    <video id="vid" autoplay playsinline muted></video>
-    <canvas id="cv"></canvas>
+    <div id="deepar-div"></div>
     <div class="cor tl"></div><div class="cor tr"></div>
     <div class="cor bl"></div><div class="cor br"></div>
     <div id="flash"></div>
-    <div id="statusBar">● Detekcia tváre aktívna</div>
+
     <div class="ov" id="ov">
       <div class="ring">◎</div>
       <div class="ov-title">Virtuálny Makeup Studio</div>
-      <div class="ov-sub">Skúste naše líčenie živо na svojej tvári</div>
+      <div class="ov-sub">Profesionálne AR líčenie živо na vašej tvári</div>
       <button class="btn-start" id="btnStart">Spustiť kameru</button>
       <div id="loadWrap">
-        <div class="load-txt">Načítavam AI model…</div>
+        <div class="load-txt">Načítavam AR engine…</div>
         <div class="load-track"><div class="load-fill"></div></div>
       </div>
       <div id="errMsg"></div>
     </div>
   </div>
 
+  <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="sec">Kolekcia</div>
+
+    <!-- LIPS -->
     <div>
       <div class="lbl">Rúž — Lips</div>
       <div class="sws" id="lipSw">
-        <div class="sw sw-x on" data-t="lip" data-c="">✕</div>
-        <div class="sw" style="background:#c97b8a" data-t="lip" data-c="201,123,138" title="Rose Petal"></div>
-        <div class="sw" style="background:#8b3a5a" data-t="lip" data-c="139,58,90"   title="Berry Kiss"></div>
-        <div class="sw" style="background:#e08060" data-t="lip" data-c="224,128,96"  title="Coral Dream"></div>
-        <div class="sw" style="background:#d4896a" data-t="lip" data-c="212,137,106" title="Nude Peach"></div>
-        <div class="sw" style="background:#5a2a4a" data-t="lip" data-c="90,42,74"    title="Dark Plum"></div>
-        <div class="sw" style="background:#b03050" data-t="lip" data-c="176,48,80"   title="Ruby Red"></div>
+        <div class="sw sw-x on" data-lip="">✕</div>
+        <div class="sw" style="background:#c97b8a" data-lip="rosePetal"   data-r="201" data-g="123" data-b="138" title="Rose Petal"></div>
+        <div class="sw" style="background:#8b3a5a" data-lip="berryKiss"   data-r="139" data-g="58"  data-b="90"  title="Berry Kiss"></div>
+        <div class="sw" style="background:#e08060" data-lip="coralDream"  data-r="224" data-g="128" data-b="96"  title="Coral Dream"></div>
+        <div class="sw" style="background:#d4896a" data-lip="nudepeach"   data-r="212" data-g="137" data-b="106" title="Nude Peach"></div>
+        <div class="sw" style="background:#5a2a4a" data-lip="darkPlum"    data-r="90"  data-g="42"  data-b="74"  title="Dark Plum"></div>
+        <div class="sw" style="background:#b03050" data-lip="rubyRed"     data-r="176" data-g="48"  data-b="80"  title="Ruby Red"></div>
+        <div class="sw" style="background:#e8c8a0" data-lip="caramel"     data-r="232" data-g="200" data-b="160" title="Caramel"></div>
+        <div class="sw" style="background:#c06080" data-lip="pinkFlirt"   data-r="192" data-g="96"  data-b="128" title="Pink Flirt"></div>
       </div>
       <div class="tabs" id="lipTabs">
         <button class="tab on" data-f="matte">Matný</button>
         <button class="tab"    data-f="gloss">Lesklý</button>
         <button class="tab"    data-f="satin">Saténový</button>
       </div>
+      <div class="sl-row" style="margin-top:.5rem">
+        <div class="sl-lbls"><span>Intenzita rúžu</span><span id="lipVal">70%</span></div>
+        <input type="range" id="lipAmt" min="0" max="100" value="70">
+      </div>
     </div>
+
+    <!-- EYES -->
     <div>
       <div class="lbl">Očné tiene — Eye Shadow</div>
       <div class="sws" id="eyeSw">
-        <div class="sw sw-x on" data-t="eye" data-c="">✕</div>
-        <div class="sw" style="background:#9b7b8a" data-t="eye" data-c="155,123,138" title="Mauve"></div>
-        <div class="sw" style="background:#6b3a2a" data-t="eye" data-c="107,58,42"   title="Warm Brown"></div>
-        <div class="sw" style="background:#4a5a8a" data-t="eye" data-c="74,90,138"   title="Midnight Blue"></div>
-        <div class="sw" style="background:#3a6a5a" data-t="eye" data-c="58,106,90"   title="Forest Green"></div>
-        <div class="sw" style="background:#8a6a3a" data-t="eye" data-c="138,106,58"  title="Bronze Gold"></div>
-        <div class="sw" style="background:#202020" data-t="eye" data-c="32,32,32"    title="Smoky Black"></div>
+        <div class="sw sw-x on" data-eye="">✕</div>
+        <div class="sw" style="background:#9b7b8a" data-eye="mauve"     data-r="155" data-g="123" data-b="138" title="Mauve"></div>
+        <div class="sw" style="background:#6b3a2a" data-eye="warmBrown" data-r="107" data-g="58"  data-b="42"  title="Warm Brown"></div>
+        <div class="sw" style="background:#4a5a8a" data-eye="navyBlue"  data-r="74"  data-g="90"  data-b="138" title="Navy Blue"></div>
+        <div class="sw" style="background:#3a6a5a" data-eye="forest"    data-r="58"  data-g="106" data-b="90"  title="Forest Green"></div>
+        <div class="sw" style="background:#8a6a3a" data-eye="bronze"    data-r="138" data-g="106" data-b="58"  title="Bronze Gold"></div>
+        <div class="sw" style="background:#202020" data-eye="smoky"     data-r="32"  data-g="32"  data-b="32"  title="Smoky Black"></div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-lbls"><span>Intenzita</span><span id="eyeVal">60%</span></div>
+        <input type="range" id="eyeAmt" min="0" max="100" value="60">
       </div>
     </div>
+
+    <!-- BLUSH -->
     <div>
       <div class="lbl">Lícenka — Blush</div>
       <div class="sws" id="blushSw">
-        <div class="sw sw-x on" data-t="blush" data-c="">✕</div>
-        <div class="sw" style="background:#e8a090" data-t="blush" data-c="232,160,144" title="Peach Glow"></div>
-        <div class="sw" style="background:#d4708a" data-t="blush" data-c="212,112,138" title="Pink Flush"></div>
-        <div class="sw" style="background:#c87050" data-t="blush" data-c="200,112,80"  title="Terracotta"></div>
-        <div class="sw" style="background:#d4b090" data-t="blush" data-c="212,176,144" title="Nude Flush"></div>
+        <div class="sw sw-x on" data-blush="">✕</div>
+        <div class="sw" style="background:#e8a090" data-blush="peach"  data-r="232" data-g="160" data-b="144" title="Peach Glow"></div>
+        <div class="sw" style="background:#d4708a" data-blush="pink"   data-r="212" data-g="112" data-b="138" title="Pink Flush"></div>
+        <div class="sw" style="background:#c87050" data-blush="terra"  data-r="200" data-g="112" data-b="80"  title="Terracotta"></div>
+        <div class="sw" style="background:#d4b090" data-blush="nude"   data-r="212" data-g="176" data-b="144" title="Nude Flush"></div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-lbls"><span>Intenzita</span><span id="blushVal">50%</span></div>
+        <input type="range" id="blushAmt" min="0" max="100" value="50">
       </div>
     </div>
+
+    <!-- CONTOUR -->
     <div>
       <div class="lbl">Kontúra — Contour</div>
       <div class="sws" id="contourSw">
-        <div class="sw sw-x on" data-t="contour" data-c="">✕</div>
-        <div class="sw" style="background:#8a6050" data-t="contour" data-c="138,96,80"  title="Soft"></div>
-        <div class="sw" style="background:#6a4030" data-t="contour" data-c="106,64,48"  title="Deep"></div>
-        <div class="sw" style="background:#9a7860" data-t="contour" data-c="154,120,96" title="Bronze"></div>
+        <div class="sw sw-x on" data-contour="">✕</div>
+        <div class="sw" style="background:#8a6050" data-contour="soft"  data-r="138" data-g="96"  data-b="80"  title="Soft"></div>
+        <div class="sw" style="background:#6a4030" data-contour="deep"  data-r="106" data-g="64"  data-b="48"  title="Deep"></div>
+        <div class="sw" style="background:#9a7860" data-contour="bronz" data-r="154" data-g="120" data-b="96"  title="Bronze"></div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-lbls"><span>Intenzita</span><span id="contourVal">40%</span></div>
+        <input type="range" id="contourAmt" min="0" max="100" value="40">
       </div>
     </div>
-    <div class="sl-row">
-      <div class="lbl">Intenzita</div>
-      <div class="sl-lbls"><span>Jemné</span><span id="iVal">60%</span><span>Výrazné</span></div>
-      <input type="range" id="iSl" min="20" max="100" value="60">
+
+    <!-- SKIN -->
+    <div>
+      <div class="lbl">Skin — Úprava pleti</div>
+      <div class="sl-row">
+        <div class="sl-lbls"><span>Vyhladzovanie</span><span id="skinVal">50%</span></div>
+        <input type="range" id="skinAmt" min="0" max="100" value="50">
+      </div>
     </div>
+
     <button class="btn-g"     id="btnCap">✦ Uložiť fotografiu</button>
     <button class="btn-ghost" id="btnRst">Odstrániť všetko</button>
   </div>
@@ -260,294 +314,244 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; h
 </div>
 
 <script>
-const S = {
-  lip:     { color: null, finish: 'matte' },
-  eye:     { color: null },
-  blush:   { color: null },
-  contour: { color: null },
-  alpha: 0.6, running: false, W: 640, H: 480, lastTs: 0
+const LICENSE_KEY = 'cb0f4c3a0ab0831e2604f98ed4652157486f181630b1467eba42485b5a0b723d09c215c034a2b392';
+
+let deepAR = null;
+let beauty = null;
+
+// Current state
+const ST = {
+  lip:     { r:0, g:0, b:0, active: false, finish: 'matte', amount: 70 },
+  eye:     { r:0, g:0, b:0, active: false, amount: 60 },
+  blush:   { r:0, g:0, b:0, active: false, amount: 50 },
+  contour: { r:0, g:0, b:0, active: false, amount: 40 },
+  skin:    50
 };
 
-// MediaPipe FaceMesh 478-point indices
-const LIPS_OUTER  = [61,185,40,39,37,0,267,269,270,409,291,375,321,405,314,17,84,181,91,146];
-const L_EYE_UPPER = [362,398,384,385,386,387,388,466,263];
-const L_EYE_LOWER = [263,249,390,373,374,380,381,382,362];
-const R_EYE_UPPER = [33,246,161,160,159,158,157,173,133];
-const R_EYE_LOWER = [133,155,154,153,145,144,163,7,33];
-const L_BROW      = [276,283,282,295,285,336,296,334,293,300];
-const R_BROW      = [46,53,52,65,55,107,66,105,63,70];
-const L_CHEEK_C   = 330;
-const R_CHEEK_C   = 101;
-const NOSE_L      = 129;
-const NOSE_R      = 358;
-const FACE_L      = 234;
-const FACE_R      = 454;
-
-/* UI events */
-document.querySelectorAll('.sw').forEach(el => {
-  el.addEventListener('click', () => {
-    const t = el.dataset.t, raw = el.dataset.c;
-    S[t].color = raw ? raw.split(',').map(Number) : null;
-    el.closest('.sws').querySelectorAll('.sw').forEach(s => s.classList.remove('on'));
-    el.classList.add('on');
-  });
-});
-document.querySelectorAll('#lipTabs .tab').forEach(btn => {
-  btn.addEventListener('click', () => {
-    S.lip.finish = btn.dataset.f;
-    document.querySelectorAll('#lipTabs .tab').forEach(b => b.classList.remove('on'));
-    btn.classList.add('on');
-  });
-});
-document.getElementById('iSl').addEventListener('input', e => {
-  S.alpha = e.target.value / 100;
-  document.getElementById('iVal').textContent = e.target.value + '%';
-});
-document.getElementById('btnRst').addEventListener('click', () => {
-  ['lip','eye','blush','contour'].forEach(t => {
-    S[t].color = null;
-    const sw = document.querySelector(`.sw[data-t="${t}"].sw-x`);
-    if (sw) { sw.closest('.sws').querySelectorAll('.sw').forEach(s => s.classList.remove('on')); sw.classList.add('on'); }
-  });
-});
-
-/* Camera + model init */
+/* ── INIT ── */
 document.getElementById('btnStart').addEventListener('click', async () => {
-  const errEl  = document.getElementById('errMsg');
-  const loadEl = document.getElementById('loadWrap');
-  const btnEl  = document.getElementById('btnStart');
-  errEl.style.display = 'none';
-  btnEl.style.display = 'none';
-  loadEl.classList.add('on');
+  const btn  = document.getElementById('btnStart');
+  const load = document.getElementById('loadWrap');
+  const err  = document.getElementById('errMsg');
+  btn.style.display = 'none';
+  load.classList.add('on');
+  err.style.display = 'none';
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    // Init DeepAR
+    deepAR = await deepar.initialize({
+      licenseKey: LICENSE_KEY,
+      previewElement: document.getElementById('deepar-div'),
+      additionalOptions: {
+        hint: 'enableFaceTrackingCnn'  // more accurate face tracking
+      }
     });
-    const vid = document.getElementById('vid');
-    vid.srcObject = stream;
-    await new Promise(res => { vid.onloadedmetadata = res; });
-    await vid.play();
 
-    const cv = document.getElementById('cv');
-    S.W = cv.width  = vid.videoWidth  || 640;
-    S.H = cv.height = vid.videoHeight || 480;
+    // Init Beauty plugin
+    beauty = await Beauty.initializeBeauty(
+      deepAR,
+      'https://cdn.jsdelivr.net/npm/@deepar/beauty/dist/'
+    );
 
-    // Init MediaPipe
-    await window._initFaceLandmarker();
+    // Default skin smoothing
+    beauty.skinSmoothing.set(ST.skin);
 
-    loadEl.classList.remove('on');
+    load.classList.remove('on');
     document.getElementById('ov').classList.add('gone');
-    document.getElementById('statusBar').classList.add('on');
-    S.running = true;
-    requestAnimationFrame(loop);
 
-  } catch(err) {
-    loadEl.classList.remove('on');
-    btnEl.style.display = 'block';
-    let msg = 'Chyba: ' + (err.message || err);
-    if (err.name === 'NotAllowedError') msg = 'Prístup ku kamere zamietnutý.';
-    if (err.name === 'NotFoundError')   msg = 'Kamera nebola nájdená.';
-    errEl.textContent = msg;
-    errEl.style.display = 'block';
-    console.error(err);
+  } catch(e) {
+    load.classList.remove('on');
+    btn.style.display = 'block';
+    err.textContent = 'Chyba: ' + (e.message || e);
+    err.style.display = 'block';
+    console.error(e);
   }
 });
 
-/* Sync canvas to match exactly how the video is rendered on screen (object-fit:cover) */
-function syncCanvas() {
-  const cv   = document.getElementById('cv');
-  const vid  = document.getElementById('vid');
-  const wrap = document.querySelector('.cam-wrap');
-  const W    = wrap.clientWidth;
-  const H    = wrap.clientHeight;
+/* ── SWATCH HELPERS ── */
+function initSwatches(selector, dataAttr, onSelect, onClear) {
+  document.querySelectorAll(`[${dataAttr}]`).forEach(el => {
+    el.addEventListener('click', () => {
+      el.closest('.sws').querySelectorAll('.sw').forEach(s => s.classList.remove('on'));
+      el.classList.add('on');
+      const val = el.getAttribute(dataAttr);
+      if (!val) { onClear(); return; }
+      const r = +el.dataset.r, g = +el.dataset.g, b = +el.dataset.b;
+      onSelect(r, g, b);
+    });
+  });
+}
 
-  // Canvas CSS fills the wrap
-  cv.style.width  = W + 'px';
-  cv.style.height = H + 'px';
-  cv.width  = W;
-  cv.height = H;
+/* ── LIPS ── */
+initSwatches('#lipSw', 'data-lip',
+  (r, g, b) => {
+    ST.lip = { ...ST.lip, r, g, b, active: true };
+    applyLip();
+  },
+  () => {
+    ST.lip.active = false;
+    if (beauty) {
+      beauty.lipMakeup.lipstick.enable.set(false);
+      beauty.lipMakeup.lipGloss.enable.set(false);
+    }
+  }
+);
 
-  // Calculate how video is cropped/scaled with object-fit:cover
-  const vidAspect  = (vid.videoWidth  || 640) / (vid.videoHeight || 480);
-  const wrapAspect = W / H;
+document.querySelectorAll('#lipTabs .tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    ST.lip.finish = btn.dataset.f;
+    document.querySelectorAll('#lipTabs .tab').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    if (ST.lip.active) applyLip();
+  });
+});
 
-  let renderW, renderH, offsetX = 0, offsetY = 0;
-  if (wrapAspect > vidAspect) {
-    renderW = W;
-    renderH = W / vidAspect;
-    offsetY = (H - renderH) / 2;
+document.getElementById('lipAmt').addEventListener('input', e => {
+  ST.lip.amount = +e.target.value;
+  document.getElementById('lipVal').textContent = e.target.value + '%';
+  if (ST.lip.active) applyLip();
+});
+
+function applyLip() {
+  if (!beauty) return;
+  const { r, g, b, finish, amount } = ST.lip;
+
+  if (finish === 'gloss') {
+    beauty.lipMakeup.lipstick.enable.set(false);
+    beauty.lipMakeup.lipGloss.enable.set(true);
+    beauty.lipMakeup.lipGloss.color.set({ r, g, b, a: 255 });
+    beauty.lipMakeup.lipGloss.amount.set(amount);
   } else {
-    renderH = H;
-    renderW = H * vidAspect;
-    offsetX = (W - renderW) / 2;
+    beauty.lipMakeup.lipGloss.enable.set(false);
+    beauty.lipMakeup.lipstick.enable.set(true);
+    beauty.lipMakeup.lipstick.color.set({ r, g, b, a: 255 });
+    beauty.lipMakeup.lipstick.amount.set(amount);
+    if (finish === 'matte') {
+      beauty.lipMakeup.lipstick.shade.setTemplate('matteNude');
+    } else {
+      beauty.lipMakeup.lipstick.shade.setTemplate('caramel');
+    }
   }
-
-  S.displayW = W;
-  S.displayH = H;
-  S.renderW  = renderW;
-  S.renderH  = renderH;
-  S.offsetX  = offsetX;
-  S.offsetY  = offsetY;
 }
 
-/* Render loop */
-function loop(ts) {
-  if (!S.running) return;
-  const vid = document.getElementById('vid');
-  const cv  = document.getElementById('cv');
-
-  // Resync every ~60 frames (handles rotation, resize)
-  if (!S.displayW || Math.round(ts) % 90 < 2) syncCanvas();
-
-  const ctx = cv.getContext('2d');
-  ctx.clearRect(0, 0, cv.width, cv.height);
-
-  if (window._faceLandmarker && ts !== S.lastTs) {
-    S.lastTs = ts;
-    try {
-      const res = window._faceLandmarker.detectForVideo(vid, ts);
-      if (res.faceLandmarks && res.faceLandmarks.length > 0) {
-        const raw = res.faceLandmarks[0];
-        // Map 0-1 normalised → actual screen pixels, accounting for cover crop
-        const kp = raw.map(pt => ({
-          x: S.offsetX + pt.x * S.renderW,
-          y: S.offsetY + pt.y * S.renderH,
-          z: pt.z
-        }));
-        drawMakeup(ctx, kp);
-      }
-    } catch(e) { /* skip frame */ }
+/* ── EYES ── */
+initSwatches('#eyeSw', 'data-eye',
+  (r, g, b) => {
+    ST.eye = { ...ST.eye, r, g, b, active: true };
+    applyEye();
+  },
+  () => {
+    ST.eye.active = false;
+    if (beauty) beauty.eyeMakeup.eyeshadow.enable.set(false);
   }
-  requestAnimationFrame(loop);
+);
+
+document.getElementById('eyeAmt').addEventListener('input', e => {
+  ST.eye.amount = +e.target.value;
+  document.getElementById('eyeVal').textContent = e.target.value + '%';
+  if (ST.eye.active) applyEye();
+});
+
+function applyEye() {
+  if (!beauty) return;
+  beauty.eyeMakeup.eyeshadow.enable.set(true);
+  beauty.eyeMakeup.eyeshadow.color.set({ r: ST.eye.r, g: ST.eye.g, b: ST.eye.b, a: 255 });
+  beauty.eyeMakeup.eyeshadow.amount.set(ST.eye.amount);
 }
 
-/* Drawing */
-function drawMakeup(ctx, kp) {
-  if (S.blush.color)   drawBlush(ctx, kp);
-  if (S.contour.color) drawContour(ctx, kp);
-  if (S.eye.color)     { drawEye(ctx, kp, 'L'); drawEye(ctx, kp, 'R'); }
-  if (S.lip.color)     drawLips(ctx, kp);
-}
-
-function tracePath(ctx, kp, indices, close) {
-  ctx.beginPath();
-  indices.forEach((i, n) => n === 0 ? ctx.moveTo(kp[i].x, kp[i].y) : ctx.lineTo(kp[i].x, kp[i].y));
-  if (close) ctx.closePath();
-}
-
-function avgPts(kp, indices) {
-  const pts = indices.map(i => kp[i]);
-  return { x: pts.reduce((s,p)=>s+p.x,0)/pts.length, y: pts.reduce((s,p)=>s+p.y,0)/pts.length };
-}
-
-function radialFill(ctx, cx, cy, rx, ry, rot, r, g, b, a) {
-  const mx = Math.max(rx, ry);
-  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, mx);
-  grd.addColorStop(0,   `rgba(${r},${g},${b},${a})`);
-  grd.addColorStop(.55, `rgba(${r},${g},${b},${a*.35})`);
-  grd.addColorStop(1,   `rgba(${r},${g},${b},0)`);
-  ctx.save();
-  ctx.globalCompositeOperation = 'multiply';
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, rx, ry, rot, 0, Math.PI*2);
-  ctx.fillStyle = grd;
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawLips(ctx, kp) {
-  const [r,g,b] = S.lip.color;
-  const a = S.alpha * 0.9;
-  ctx.save();
-  tracePath(ctx, kp, LIPS_OUTER, true);
-
-  if (S.lip.finish === 'gloss') {
-    const cx = kp[13].x, cy = kp[13].y;
-    const grd = ctx.createRadialGradient(cx, cy-3, 1, cx, cy, 24);
-    grd.addColorStop(0,   `rgba(255,255,255,.35)`);
-    grd.addColorStop(.35, `rgba(${r},${g},${b},${a})`);
-    grd.addColorStop(1,   `rgba(${r*.7|0},${g*.7|0},${b*.7|0},${a})`);
-    ctx.fillStyle = grd;
-  } else if (S.lip.finish === 'satin') {
-    ctx.fillStyle = `rgba(${r},${g},${b},${a*.88})`;
-  } else {
-    ctx.fillStyle = `rgba(${r*.84|0},${g*.84|0},${b*.84|0},${a})`;
+/* ── BLUSH ── */
+initSwatches('#blushSw', 'data-blush',
+  (r, g, b) => {
+    ST.blush = { ...ST.blush, r, g, b, active: true };
+    applyBlush();
+  },
+  () => {
+    ST.blush.active = false;
+    if (beauty) beauty.faceMakeup.blush.enable.set(false);
   }
-  ctx.fill();
+);
 
-  if (S.lip.finish === 'gloss') {
-    ctx.beginPath();
-    ctx.ellipse(kp[13].x, kp[13].y-3, 10, 4, 0, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,.2)';
-    ctx.fill();
+document.getElementById('blushAmt').addEventListener('input', e => {
+  ST.blush.amount = +e.target.value;
+  document.getElementById('blushVal').textContent = e.target.value + '%';
+  if (ST.blush.active) applyBlush();
+});
+
+function applyBlush() {
+  if (!beauty) return;
+  beauty.faceMakeup.blush.enable.set(true);
+  beauty.faceMakeup.blush.color.set({ r: ST.blush.r, g: ST.blush.g, b: ST.blush.b, a: 255 });
+  beauty.faceMakeup.blush.intensity.set(ST.blush.amount);
+}
+
+/* ── CONTOUR ── */
+initSwatches('#contourSw', 'data-contour',
+  (r, g, b) => {
+    ST.contour = { ...ST.contour, r, g, b, active: true };
+    applyContour();
+  },
+  () => {
+    ST.contour.active = false;
+    if (beauty) beauty.faceMakeup.contour.enable.set(false);
   }
-  ctx.restore();
+);
+
+document.getElementById('contourAmt').addEventListener('input', e => {
+  ST.contour.amount = +e.target.value;
+  document.getElementById('contourVal').textContent = e.target.value + '%';
+  if (ST.contour.active) applyContour();
+});
+
+function applyContour() {
+  if (!beauty) return;
+  beauty.faceMakeup.contour.enable.set(true);
+  beauty.faceMakeup.contour.color.set({ r: ST.contour.r, g: ST.contour.g, b: ST.contour.b, a: 255 });
+  beauty.faceMakeup.contour.intensity.set(ST.contour.amount);
 }
 
-function drawEye(ctx, kp, side) {
-  const [r,g,b] = S.eye.color;
-  const a = S.alpha * 0.65;
-  const upperIdx = side === 'L' ? L_EYE_UPPER : R_EYE_UPPER;
-  const browIdx  = side === 'L' ? L_BROW      : R_BROW;
+/* ── SKIN SMOOTHING ── */
+document.getElementById('skinAmt').addEventListener('input', e => {
+  ST.skin = +e.target.value;
+  document.getElementById('skinVal').textContent = e.target.value + '%';
+  if (beauty) beauty.skinSmoothing.set(ST.skin);
+});
 
-  const eyeC = avgPts(kp, upperIdx);
-  const browC = avgPts(kp, browIdx);
-  const eyeW  = Math.abs(kp[upperIdx[upperIdx.length-1]].x - kp[upperIdx[0]].x);
+/* ── RESET ── */
+document.getElementById('btnRst').addEventListener('click', () => {
+  if (!beauty) return;
+  beauty.lipMakeup.lipstick.enable.set(false);
+  beauty.lipMakeup.lipGloss.enable.set(false);
+  beauty.eyeMakeup.eyeshadow.enable.set(false);
+  beauty.faceMakeup.blush.enable.set(false);
+  beauty.faceMakeup.contour.enable.set(false);
+  beauty.skinSmoothing.set(0);
 
-  ctx.save();
-  ctx.beginPath();
-  tracePath(ctx, kp, [...upperIdx, ...browIdx.slice().reverse()], true);
-  const grd = ctx.createLinearGradient(eyeC.x, browC.y, eyeC.x, eyeC.y + 6);
-  grd.addColorStop(0,   `rgba(${r},${g},${b},0)`);
-  grd.addColorStop(.5,  `rgba(${r},${g},${b},${a*.4})`);
-  grd.addColorStop(1,   `rgba(${r},${g},${b},${a})`);
-  ctx.fillStyle = grd;
-  ctx.globalCompositeOperation = 'multiply';
-  ctx.fill();
-  ctx.restore();
-}
+  // Reset UI
+  ['lipSw','eyeSw','blushSw','contourSw'].forEach(id => {
+    const c = document.getElementById(id);
+    c.querySelectorAll('.sw').forEach(s => s.classList.remove('on'));
+    c.querySelector('.sw-x').classList.add('on');
+  });
+  document.getElementById('skinAmt').value = 0;
+  document.getElementById('skinVal').textContent = '0%';
+});
 
-function drawBlush(ctx, kp) {
-  const [r,g,b] = S.blush.color;
-  const faceW = Math.abs(kp[FACE_R].x - kp[FACE_L].x);
-  const rx = faceW * 0.2, ry = faceW * 0.12;
-  radialFill(ctx, kp[L_CHEEK_C].x, kp[L_CHEEK_C].y, rx, ry, -0.25, r, g, b, S.alpha * 0.42);
-  radialFill(ctx, kp[R_CHEEK_C].x, kp[R_CHEEK_C].y, rx, ry,  0.25, r, g, b, S.alpha * 0.42);
-}
-
-function drawContour(ctx, kp) {
-  const [r,g,b] = S.contour.color;
-  const faceW = Math.abs(kp[FACE_R].x - kp[FACE_L].x);
-  const rx = faceW * 0.14, ry = faceW * 0.065;
-  // Cheekbone hollow — slightly below cheek centre
-  radialFill(ctx, kp[FACE_L].x + faceW*.18, kp[L_CHEEK_C].y + ry*.5, rx*1.4, ry,  0.4, r, g, b, S.alpha * 0.32);
-  radialFill(ctx, kp[FACE_R].x - faceW*.18, kp[R_CHEEK_C].y + ry*.5, rx*1.4, ry, -0.4, r, g, b, S.alpha * 0.32);
-  // Nose
-  const nr = faceW * 0.022;
-  radialFill(ctx, kp[NOSE_L].x, kp[NOSE_L].y, nr, nr*3, 0.1, r, g, b, S.alpha * 0.25);
-  radialFill(ctx, kp[NOSE_R].x, kp[NOSE_R].y, nr, nr*3, -0.1, r, g, b, S.alpha * 0.25);
-}
-
-/* Capture */
-document.getElementById('btnCap').addEventListener('click', () => {
-  if (!S.running) return;
-  const vid = document.getElementById('vid');
-  const cv2 = document.getElementById('cv');
+/* ── CAPTURE ── */
+document.getElementById('btnCap').addEventListener('click', async () => {
+  if (!deepAR) return;
   const flash = document.getElementById('flash');
   flash.classList.add('pop');
   setTimeout(() => flash.classList.remove('pop'), 130);
 
-  const out = document.createElement('canvas');
-  out.width = S.W; out.height = S.H;
-  const c = out.getContext('2d');
-  c.save(); c.translate(S.W,0); c.scale(-1,1); c.drawImage(vid,0,0); c.restore();
-  c.save(); c.translate(S.W,0); c.scale(-1,1); c.drawImage(cv2,0,0); c.restore();
-
-  const a = document.createElement('a');
-  a.download = 'luxe-look.png';
-  a.href = out.toDataURL('image/png');
-  a.click();
+  try {
+    const img = await deepAR.takeScreenshot();
+    const a = document.createElement('a');
+    a.download = 'luxe-look.png';
+    a.href = img;
+    a.click();
+  } catch(e) {
+    console.error('Screenshot failed:', e);
+  }
 });
 </script>
 </body>
