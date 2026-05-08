@@ -332,21 +332,10 @@ const ST = {
 // Load Beauty library dynamically
 async function loadBeautyLib() {
   if (BeautyLib) return BeautyLib;
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = BEAUTY_CDN + 'beauty.js';
-    s.onload = () => {
-      // Beauty is exposed as global
-      if (typeof Beauty !== 'undefined') {
-        BeautyLib = Beauty;
-        resolve(BeautyLib);
-      } else {
-        reject(new Error('Beauty library not found after load'));
-      }
-    };
-    s.onerror = () => reject(new Error('Failed to load Beauty SDK'));
-    document.head.appendChild(s);
-  });
+  // Load as ES module
+  const mod = await import('https://cdn.jsdelivr.net/npm/@deepar/beauty/dist/beauty-deepar.esm.js');
+  BeautyLib = mod;
+  return BeautyLib;
 }
 
 /* ── INIT ── */
