@@ -314,29 +314,17 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; h
 
 <script>
 const LICENSE_KEY = '2fbe422af87d602903e81784016cf1bb4bfababafedcbcd7c278e4466100287212594272f252cf85';
-const BEAUTY_CDN  = 'https://cdn.jsdelivr.net/npm/@deepar/beauty/dist/';
 
-let deepAR = null;
-let beauty = null;
-let BeautyLib = null;
+let deepAR  = null;
+let beauty  = null;
 
-// Current state
 const ST = {
   lip:     { r:0, g:0, b:0, active: false, finish: 'matte', amount: 70 },
   eye:     { r:0, g:0, b:0, active: false, amount: 60 },
   blush:   { r:0, g:0, b:0, active: false, amount: 50 },
   contour: { r:0, g:0, b:0, active: false, amount: 40 },
-  skin:    50
+  skin: 50
 };
-
-// Load Beauty library dynamically
-async function loadBeautyLib() {
-  if (BeautyLib) return BeautyLib;
-  // Load as ES module
-  const mod = await import('https://cdn.jsdelivr.net/npm/@deepar/beauty/dist/beauty-deepar.esm.js');
-  BeautyLib = mod;
-  return BeautyLib;
-}
 
 /* ── INIT ── */
 document.getElementById('btnStart').addEventListener('click', async () => {
@@ -348,23 +336,21 @@ document.getElementById('btnStart').addEventListener('click', async () => {
   err.style.display = 'none';
 
   try {
-    // Load Beauty SDK first
-    await loadBeautyLib();
-
-    // Init DeepAR
+    // 1. Init DeepAR
     deepAR = await deepar.initialize({
       licenseKey: LICENSE_KEY,
       previewElement: document.getElementById('deepar-div'),
-      additionalOptions: {
-        hint: 'enableFaceTrackingCnn'
-      }
     });
 
-    // Init Beauty plugin
-    beauty = await BeautyLib.initializeBeauty(deepAR, BEAUTY_CDN);
+    // 2. Load Beauty as ES module and initialize
+    const BeautyMod = await import('https://cdn.jsdelivr.net/npm/@deepar/beauty/dist/beauty-deepar.esm.js');
+    const initFn = BeautyMod.initializeBeauty || BeautyMod.default?.initializeBeauty;
+    if (!initFn) throw new Error('initializeBeauty not found in Beauty module');
 
-    // Default skin smoothing
-    beauty.skinSmoothing.set(ST.skin);
+    beauty = await initFn(deepAR, 'https://cdn.jsdelivr.net/npm/@deepar/beauty/dist/');
+
+    // 3. Apply default skin smoothing so user sees something immediately
+    beauty.skinSmoothing.set(30);
 
     load.classList.remove('on');
     document.getElementById('ov').classList.add('gone');
@@ -372,9 +358,9 @@ document.getElementById('btnStart').addEventListener('click', async () => {
   } catch(e) {
     load.classList.remove('on');
     btn.style.display = 'block';
-    err.textContent = 'Chyba: ' + (e.message || e);
+    err.textContent = 'Chyba: ' + (e.message || String(e));
     err.style.display = 'block';
-    console.error(e);
+    console.error('DeepAR init error:', e);
   }
 });
 
@@ -425,23 +411,20 @@ document.getElementById('lipAmt').addEventListener('input', e => {
 function applyLip() {
   if (!beauty) return;
   const { r, g, b, finish, amount } = ST.lip;
-
-  if (finish === 'gloss') {
-    beauty.lipMakeup.lipstick.enable.set(false);
-    beauty.lipMakeup.lipGloss.enable.set(true);
-    beauty.lipMakeup.lipGloss.color.set({ r, g, b, a: 255 });
-    beauty.lipMakeup.lipGloss.amount.set(amount);
-  } else {
-    beauty.lipMakeup.lipGloss.enable.set(false);
-    beauty.lipMakeup.lipstick.enable.set(true);
-    beauty.lipMakeup.lipstick.color.set({ r, g, b, a: 255 });
-    beauty.lipMakeup.lipstick.amount.set(amount);
-    if (finish === 'matte') {
-      beauty.lipMakeup.lipstick.shade.setTemplate('matteNude');
+  try {
+    if (finish === 'gloss') {
+      beauty.lipMakeup.lipstick.enable.set(false);
+      beauty.lipMakeup.lipGloss.enable.set(true);
+      beauty.lipMakeup.lipGloss.color.set({ r, g, b, a: 255 });
+      beauty.lipMakeup.lipGloss.amount.set(amount);
     } else {
-      beauty.lipMakeup.lipstick.shade.setTemplate('caramel');
+      beauty.lipMakeup.lipGloss.enable.set(false);
+      beauty.lipMakeup.lipstick.enable.set(true);
+      // Set color by directly setting the shade with a custom color
+      beauty.lipMakeup.lipstick.color.set({ r, g, b, a: 255 });
+      beauty.lipMakeup.lipstick.amount.set(amount);
     }
-  }
+  } catch(e) { console.error('applyLip error:', e); }
 }
 
 /* ── EYES ── */
