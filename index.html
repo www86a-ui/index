@@ -8,30 +8,22 @@
 <script src="https://cdn.jsdelivr.net/npm/deepar/js/deepar.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --cream: #f5f0e8; --dark: #1a1510; --bg: #0d0b08;
-  --panel: #130f0a; --gold: #c9a96e; --gold2: #e8d5b0;
-}
+:root { --cream:#f5f0e8; --dark:#1a1510; --bg:#0d0b08; --panel:#130f0a; --gold:#c9a96e; --gold2:#e8d5b0; }
 body { background:var(--dark); color:var(--cream); font-family:'Montserrat',sans-serif; font-weight:300; min-height:100vh; overflow-x:hidden; }
-
 header { padding:.9rem 1.5rem; border-bottom:1px solid rgba(201,169,110,.18); display:flex; align-items:center; justify-content:space-between; }
 .logo { font-family:'Cormorant Garamond',serif; font-size:1.4rem; letter-spacing:.4em; color:var(--gold); }
 .logo em { font-style:italic; color:var(--cream); }
 .sub { font-size:.5rem; letter-spacing:.22em; text-transform:uppercase; color:rgba(245,240,232,.3); margin-top:2px; }
-
 .studio { display:flex; flex-direction:column; }
 @media (min-width:700px) { .studio { flex-direction:row; height:calc(100vh - 58px); } }
-
 .cam-wrap { position:relative; background:var(--bg); display:flex; align-items:center; justify-content:center; overflow:hidden; flex:1; min-height:65vw; }
 #deepar-div { width:100%; height:100%; }
 #deepar-div canvas { width:100% !important; height:100% !important; object-fit:cover; }
-
 .cor { position:absolute; width:22px; height:22px; border:1px solid rgba(201,169,110,.45); pointer-events:none; z-index:2; }
 .cor.tl { top:10px; left:10px; border-right:none; border-bottom:none; }
 .cor.tr { top:10px; right:10px; border-left:none; border-bottom:none; }
 .cor.bl { bottom:10px; left:10px; border-right:none; border-top:none; }
 .cor.br { bottom:10px; right:10px; border-left:none; border-top:none; }
-
 .ov { position:absolute; inset:0; z-index:10; background:rgba(13,11,8,.96); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.1rem; text-align:center; padding:2rem; transition:opacity .5s; }
 .ov.gone { opacity:0; pointer-events:none; }
 .ring { width:58px; height:58px; border:1px solid var(--gold); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:var(--gold); animation:pulse 2.5s ease-in-out infinite; }
@@ -49,7 +41,6 @@ header { padding:.9rem 1.5rem; border-bottom:1px solid rgba(201,169,110,.18); di
 #errMsg { font-size:.62rem; color:#e08060; line-height:1.8; max-width:300px; display:none; margin-top:.5rem; }
 #flash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:20; transition:opacity .06s; }
 #flash.pop { opacity:.85; }
-
 .sidebar { background:var(--panel); border-top:1px solid rgba(201,169,110,.15); padding:1.2rem 1.1rem; overflow-y:auto; display:flex; flex-direction:column; gap:1.4rem; }
 @media (min-width:700px) { .sidebar { width:300px; border-top:none; border-left:1px solid rgba(201,169,110,.15); } }
 .sidebar::-webkit-scrollbar { width:2px; }
@@ -80,7 +71,6 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; h
 </style>
 </head>
 <body>
-
 <header>
   <div>
     <div class="logo">LUXE <em>Studio</em></div>
@@ -104,7 +94,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; h
       <div class="ov-sub">Profesionálne AR líčenie živо na vašej tvári</div>
       <button class="btn-start" id="btnStart">Spustiť kameru</button>
       <div id="loadWrap">
-        <div class="load-txt">Načítavam AR engine…</div>
+        <div class="load-txt" id="loadTxt">Inicializujem DeepAR…</div>
         <div class="load-track"><div class="load-fill"></div></div>
       </div>
       <div id="errMsg"></div>
@@ -114,18 +104,19 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; h
   <div class="sidebar">
     <div class="sec">Kolekcia</div>
 
+    <!-- LIPS -->
     <div>
       <div class="lbl">Rúž — Lips</div>
       <div class="sws" id="lipSw">
         <div class="sw sw-x on" data-lip="">✕</div>
-        <div class="sw" style="background:#c97b8a" data-lip="rosePetal"  data-r="201" data-g="123" data-b="138"></div>
-        <div class="sw" style="background:#8b3a5a" data-lip="berryKiss"  data-r="139" data-g="58"  data-b="90"></div>
-        <div class="sw" style="background:#e08060" data-lip="coral"      data-r="224" data-g="128" data-b="96"></div>
-        <div class="sw" style="background:#d4896a" data-lip="nude"       data-r="212" data-g="137" data-b="106"></div>
-        <div class="sw" style="background:#5a2a4a" data-lip="plum"       data-r="90"  data-g="42"  data-b="74"></div>
-        <div class="sw" style="background:#b03050" data-lip="red"        data-r="176" data-g="48"  data-b="80"></div>
-        <div class="sw" style="background:#e8c8a0" data-lip="caramel"    data-r="232" data-g="200" data-b="160"></div>
-        <div class="sw" style="background:#c06080" data-lip="pink"       data-r="192" data-g="96"  data-b="128"></div>
+        <div class="sw" style="background:#c97b8a" data-lip="1" data-r="201" data-g="123" data-b="138" title="Rose Petal"></div>
+        <div class="sw" style="background:#8b3a5a" data-lip="2" data-r="139" data-g="58"  data-b="90"  title="Berry Kiss"></div>
+        <div class="sw" style="background:#e08060" data-lip="3" data-r="224" data-g="128" data-b="96"  title="Coral"></div>
+        <div class="sw" style="background:#d4896a" data-lip="4" data-r="212" data-g="137" data-b="106" title="Nude"></div>
+        <div class="sw" style="background:#5a2a4a" data-lip="5" data-r="90"  data-g="42"  data-b="74"  title="Dark Plum"></div>
+        <div class="sw" style="background:#b03050" data-lip="6" data-r="176" data-g="48"  data-b="80"  title="Ruby Red"></div>
+        <div class="sw" style="background:#e8c8a0" data-lip="7" data-r="232" data-g="200" data-b="160" title="Caramel"></div>
+        <div class="sw" style="background:#c06080" data-lip="8" data-r="192" data-g="96"  data-b="128" title="Pink"></div>
       </div>
       <div class="tabs" id="lipTabs">
         <button class="tab on" data-f="matte">Matný</button>
@@ -138,6 +129,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; h
       </div>
     </div>
 
+    <!-- EYES -->
     <div>
       <div class="lbl">Očné tiene — Eye Shadow</div>
       <div class="sws" id="eyeSw">
@@ -155,6 +147,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; h
       </div>
     </div>
 
+    <!-- BLUSH -->
     <div>
       <div class="lbl">Lícenka — Blush</div>
       <div class="sws" id="blushSw">
@@ -170,6 +163,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; h
       </div>
     </div>
 
+    <!-- CONTOUR -->
     <div>
       <div class="lbl">Kontúra — Contour</div>
       <div class="sws" id="contourSw">
@@ -184,6 +178,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; h
       </div>
     </div>
 
+    <!-- SKIN -->
     <div>
       <div class="lbl">Úprava pleti — Skin</div>
       <div class="sl-row">
@@ -210,44 +205,53 @@ let deepAR = null;
 let beauty = null;
 
 const ST = {
-  lip:     { r:201, g:123, b:138, active:false, finish:'matte', amount:70 },
-  eye:     { r:0,   g:0,   b:0,   active:false, amount:60 },
-  blush:   { r:0,   g:0,   b:0,   active:false, amount:50 },
-  contour: { r:0,   g:0,   b:0,   active:false, amount:40 },
+  lip:     { r:0, g:0, b:0, active:false, finish:'matte', amount:70 },
+  eye:     { r:0, g:0, b:0, active:false, amount:60 },
+  blush:   { r:0, g:0, b:0, active:false, amount:50 },
+  contour: { r:0, g:0, b:0, active:false, amount:40 },
   skin: 30
 };
 
-/* ── START ── */
+// Convert r,g,b 0-255 to hex for DeepAR custom shade image
+function rgbToDataURL(r, g, b) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1; canvas.height = 1;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = `rgb(${r},${g},${b})`;
+  ctx.fillRect(0, 0, 1, 1);
+  return canvas.toDataURL();
+}
+
+/* ── INIT ── */
 document.getElementById('btnStart').addEventListener('click', async () => {
-  const btn  = document.getElementById('btnStart');
-  const load = document.getElementById('loadWrap');
-  const err  = document.getElementById('errMsg');
+  const btn    = document.getElementById('btnStart');
+  const load   = document.getElementById('loadWrap');
+  const err    = document.getElementById('errMsg');
+  const loadTx = document.getElementById('loadTxt');
   btn.style.display = 'none';
   load.classList.add('on');
   err.style.display = 'none';
 
   try {
-    // 1. Init DeepAR
+    loadTx.textContent = 'Inicializujem DeepAR…';
     deepAR = await deepar.initialize({
       licenseKey: LICENSE_KEY,
       previewElement: document.getElementById('deepar-div'),
     });
 
-    // 2. Load Beauty effect file — this is REQUIRED before Beauty API works
-    // Without this DeepAR doesn't know about lips/face_makeup nodes
-    await deepAR.switchEffect(BEAUTY_CDN + 'beauty.deepar');
+    loadTx.textContent = 'Načítavam Beauty engine…';
+    const mod = await import('https://cdn.jsdelivr.net/npm/@deepar/beauty/dist/beauty-deepar.esm.js');
+    const initFn = mod.initializeBeauty || (mod.default && mod.default.initializeBeauty);
+    if (!initFn) throw new Error('initializeBeauty nenájdené v module');
 
-    // 3. Init Beauty plugin
-    const mod = await import(BEAUTY_CDN + 'beauty-deepar.esm.js');
-    const initFn = mod.initializeBeauty || mod.default?.initializeBeauty;
-    if (!initFn) throw new Error('initializeBeauty not found');
     beauty = await initFn(deepAR, BEAUTY_CDN);
 
-    // 4. Default subtle skin smooth
+    // Subtle default skin
     beauty.skinSmoothing.set(ST.skin);
 
     load.classList.remove('on');
     document.getElementById('ov').classList.add('gone');
+    console.log('DeepAR Beauty ready ✓', beauty);
 
   } catch(e) {
     load.classList.remove('on');
@@ -273,8 +277,13 @@ function initSw(attr, onPick, onClear) {
 
 /* ── LIPS ── */
 initSw('data-lip',
-  (r,g,b) => { ST.lip = {...ST.lip, r,g,b, active:true}; applyLip(); },
-  ()      => { ST.lip.active = false; if(beauty) { try{ beauty.lipMakeup.lipstick.enable.set(false); beauty.lipMakeup.lipGloss.enable.set(false); }catch(e){} } }
+  (r,g,b) => { ST.lip = {...ST.lip, r, g, b, active:true}; applyLip(); },
+  () => {
+    ST.lip.active = false;
+    if (!beauty) return;
+    try { beauty.lipMakeup.lipstick.enable.set(false); } catch(e){}
+    try { beauty.lipMakeup.lipGloss.enable.set(false); } catch(e){}
+  }
 );
 document.querySelectorAll('#lipTabs .tab').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -292,32 +301,27 @@ document.getElementById('lipAmt').addEventListener('input', e => {
 
 function applyLip() {
   if (!beauty) return;
-  const {r,g,b,finish,amount} = ST.lip;
+  const {r, g, b, finish, amount} = ST.lip;
   try {
     if (finish === 'gloss') {
-      beauty.lipMakeup.lipstick.enable.set(false);
+      try { beauty.lipMakeup.lipstick.enable.set(false); } catch(e){}
       beauty.lipMakeup.lipGloss.enable.set(true);
-      beauty.lipMakeup.lipGloss.color.set({r,g,b,a:255});
+      beauty.lipMakeup.lipGloss.color.set({r, g, b, a:255});
       beauty.lipMakeup.lipGloss.amount.set(amount);
     } else {
-      beauty.lipMakeup.lipGloss.enable.set(false);
+      try { beauty.lipMakeup.lipGloss.enable.set(false); } catch(e){}
       beauty.lipMakeup.lipstick.enable.set(true);
-      // Use shade template with custom color override
-      if (finish === 'matte') {
-        beauty.lipMakeup.lipstick.shade.setTemplate('matteNude');
-      } else {
-        beauty.lipMakeup.lipstick.shade.setTemplate('caramel');
-      }
-      beauty.lipMakeup.lipstick.shade.color.set({r,g,b,a:255});
       beauty.lipMakeup.lipstick.amount.set(amount);
+      // Set color via custom image (1x1 pixel of the color)
+      beauty.lipMakeup.lipstick.shade.set(rgbToDataURL(r, g, b));
     }
   } catch(e) { console.error('applyLip:', e.message); }
 }
 
 /* ── EYES ── */
 initSw('data-eye',
-  (r,g,b) => { ST.eye = {...ST.eye, r,g,b, active:true}; applyEye(); },
-  ()      => { ST.eye.active = false; if(beauty) { try{ beauty.eyeMakeup.eyeshadow.enable.set(false); }catch(e){} } }
+  (r,g,b) => { ST.eye = {...ST.eye, r, g, b, active:true}; applyEye(); },
+  () => { ST.eye.active = false; if(beauty) try{ beauty.eyeMakeup.eyeshadow.enable.set(false); }catch(e){} }
 );
 document.getElementById('eyeAmt').addEventListener('input', e => {
   ST.eye.amount = +e.target.value;
@@ -335,8 +339,8 @@ function applyEye() {
 
 /* ── BLUSH ── */
 initSw('data-blush',
-  (r,g,b) => { ST.blush = {...ST.blush, r,g,b, active:true}; applyBlush(); },
-  ()      => { ST.blush.active = false; if(beauty) { try{ beauty.faceMakeup.blush.enable.set(false); }catch(e){} } }
+  (r,g,b) => { ST.blush = {...ST.blush, r, g, b, active:true}; applyBlush(); },
+  () => { ST.blush.active = false; if(beauty) try{ beauty.faceMakeup.blush.enable.set(false); }catch(e){} }
 );
 document.getElementById('blushAmt').addEventListener('input', e => {
   ST.blush.amount = +e.target.value;
@@ -354,8 +358,8 @@ function applyBlush() {
 
 /* ── CONTOUR ── */
 initSw('data-contour',
-  (r,g,b) => { ST.contour = {...ST.contour, r,g,b, active:true}; applyContour(); },
-  ()      => { ST.contour.active = false; if(beauty) { try{ beauty.faceMakeup.contour.enable.set(false); }catch(e){} } }
+  (r,g,b) => { ST.contour = {...ST.contour, r, g, b, active:true}; applyContour(); },
+  () => { ST.contour.active = false; if(beauty) try{ beauty.faceMakeup.contour.enable.set(false); }catch(e){} }
 );
 document.getElementById('contourAmt').addEventListener('input', e => {
   ST.contour.amount = +e.target.value;
@@ -375,20 +379,17 @@ function applyContour() {
 document.getElementById('skinAmt').addEventListener('input', e => {
   ST.skin = +e.target.value;
   document.getElementById('skinVal').textContent = e.target.value + '%';
-  if (beauty) { try{ beauty.skinSmoothing.set(ST.skin); }catch(e){} }
+  if (beauty) try { beauty.skinSmoothing.set(ST.skin); } catch(e){}
 });
 
 /* ── RESET ── */
 document.getElementById('btnRst').addEventListener('click', () => {
   if (!beauty) return;
-  try {
-    beauty.lipMakeup.lipstick.enable.set(false);
-    beauty.lipMakeup.lipGloss.enable.set(false);
-    beauty.eyeMakeup.eyeshadow.enable.set(false);
-    beauty.faceMakeup.blush.enable.set(false);
-    beauty.faceMakeup.contour.enable.set(false);
-    beauty.skinSmoothing.set(0);
-  } catch(e) {}
+  ['lipstick','lipGloss'].forEach(k => { try{ beauty.lipMakeup[k].enable.set(false); }catch(e){} });
+  try { beauty.eyeMakeup.eyeshadow.enable.set(false); } catch(e){}
+  try { beauty.faceMakeup.blush.enable.set(false); } catch(e){}
+  try { beauty.faceMakeup.contour.enable.set(false); } catch(e){}
+  try { beauty.skinSmoothing.set(0); } catch(e){}
   ['lipSw','eyeSw','blushSw','contourSw'].forEach(id => {
     const c = document.getElementById(id);
     c.querySelectorAll('.sw').forEach(s => s.classList.remove('on'));
